@@ -1,0 +1,338 @@
+:root {
+    --toy-pink: #ffb7b2;
+    --toy-yellow: #ffe066;
+    --toy-cyan: #a2e1db;
+    --toy-white: #ffffff;
+    --button-pink: #ff477e;
+    --button-pink-dark: #bc006b;
+    --glass-white: rgba(255, 255, 255, 0.5);
+    --soft-yellow: #fff9a3;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    width: 100vw;
+    height: 100vh;
+    background-color: var(--toy-pink);
+    font-family: 'Outfit', 'Nunito', sans-serif;
+    overflow: hidden;
+    user-select: none;
+    touch-action: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Bouncy Magic Sparkles */
+.firefly {
+    position: absolute;
+    width: 15px;
+    height: 15px;
+    border-radius: 50%;
+    filter: blur(2px);
+    animation: bounceSparkle 4s infinite ease-in-out;
+    z-index: 10;
+}
+
+.firefly:nth-child(1) { background: #ff7eb9; left: 10%; animation-delay: 0s; }
+.firefly:nth-child(2) { background: #ffea7f; left: 30%; animation-delay: 1.5s; }
+.firefly:nth-child(3) { background: #7efaff; left: 50%; animation-delay: 3s; }
+.firefly:nth-child(4) { background: #ff7eb9; left: 70%; animation-delay: 0.5s; }
+.firefly:nth-child(5) { background: #ffea7f; left: 90%; animation-delay: 2.2s; }
+.firefly:nth-child(6) { background: #7efaff; left: 15%; animation-delay: 3.5s; }
+
+@keyframes bounceSparkle {
+    0%, 100% { transform: translateY(0) scale(1); opacity: 0.4; }
+    50% { transform: translateY(-50px) scale(1.5); opacity: 0.8; }
+}
+
+/* Splash Screen (Start Screen) */
+#start-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: var(--toy-pink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+    transition: opacity 1s cubic-bezier(0.4, 0, 0.2, 1), visibility 1s;
+}
+
+/* Plush Mountain Background */
+#plush-mountain {
+    /* No positioning or z-index to avoid creating a stacking context */
+    pointer-events: auto;
+}
+
+.plush-bg-item {
+    position: absolute;
+    width: 32vw;               /* Pure responsive sizing */
+    height: auto;
+    cursor: pointer;
+    transition: all 0.5s ease-in-out;
+    filter: drop-shadow(0px 15px 15px rgba(0,0,0,0.5));
+    animation: breathe 6s infinite ease-in-out;
+    user-drag: none;
+    -webkit-user-drag: none;
+    pointer-events: auto;
+}
+
+.plush-bg-item:hover {
+    transform: scale(1.1) !important;
+    filter: drop-shadow(0px 20px 25px rgba(0,0,0,0.6));
+}
+
+.plush-bg-item.celebrate {
+    z-index: 100 !important; /* Bring to very front */
+    transform: scale(1.8) rotate(0deg) !important; /* Explosion effect */
+    filter: drop-shadow(0 0 30px #FFD700) drop-shadow(0 0 50px #FFF) !important;
+    animation: wiggle 0.3s infinite ease-in-out !important;
+}
+
+@keyframes breathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+}
+
+@keyframes wiggle {
+    0%, 100% { transform: scale(1.8) rotate(-3deg); }
+    50% { transform: scale(1.8) rotate(3deg); }
+}
+
+/* Animal Name Animation */
+#animal-name-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 6rem;
+    font-weight: 900;
+    color: white;
+    text-shadow: 0 10px 20px rgba(0,0,0,0.3), 0 0 30px var(--toy-yellow);
+    z-index: 20;
+    opacity: 0;
+    pointer-events: none;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+#animal-name-container.pop-anim {
+    animation: popAndFly 3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes popAndFly {
+    0% { 
+        top: 50%;
+        transform: translate(-50%, -50%) scale(0.2); 
+        opacity: 0; 
+    }
+    20% { 
+        top: 50%;
+        transform: translate(-50%, -50%) scale(1.2); 
+        opacity: 1; 
+    }
+    40% { 
+        top: 50%;
+        transform: translate(-50%, -50%) scale(1); 
+        opacity: 1; 
+    }
+    100% { 
+        top: 10%; /* End position above the camera */
+        transform: translate(-50%, -50%) scale(0.6); 
+        opacity: 1; 
+    }
+}
+
+#start-screen.hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+#logo {
+    position: absolute;
+    top: 45%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 70vmin;
+    max-width: 600px;
+    border-radius: 40px;
+    border: 12px solid white;
+    background: white;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2), 0 0 40px rgba(255, 255, 255, 0.8);
+    z-index: 55;
+    animation: floatyLogo 6s infinite ease-in-out;
+}
+
+@keyframes floatyLogo {
+    0%, 100% { transform: translate(-50%, -50%) translateY(0) rotate(-1deg); }
+    50% { transform: translate(-50%, -50%) translateY(-30px) rotate(1deg); }
+}
+
+#startButton {
+    position: absolute;
+    bottom: 12%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 35px 80px;
+    font-size: 3.5rem;
+    font-weight: 900;
+    color: white;
+    background-color: var(--button-pink);
+    border: none;
+    border-radius: 60px;
+    cursor: pointer;
+    box-shadow: 0 12px 0 var(--button-pink-dark), 
+                0 20px 40px rgba(0,0,0,0.3), 
+                inset 0 6px 12px var(--glass-white);
+    text-shadow: 0 3px 6px rgba(0,0,0,0.2);
+    z-index: 60;
+    white-space: nowrap;
+    transition: all 0.1s;
+    animation: buttonPulse 3s infinite ease-in-out;
+}
+
+#startButton:hover {
+    background-color: #ff5e8e;
+    transform: translateX(-50%) scale(1.05);
+}
+
+#startButton:active {
+    transform: translateX(-50%) translateY(10px);
+    box-shadow: 0 2px 0 var(--button-pink-dark), 
+                0 5px 10px rgba(0,0,0,0.2), 
+                inset 0 6px 12px var(--glass-white);
+}
+
+@keyframes buttonPulse {
+    0%, 100% { box-shadow: 0 12px 0 var(--button-pink-dark), 0 20px 40px rgba(0,0,0,0.3); }
+    50% { box-shadow: 0 12px 0 var(--button-pink-dark), 0 30px 60px rgba(255, 71, 126, 0.4); }
+}
+
+/* Camera Frame (Toy Screen) */
+#camera-frame {
+    position: relative;
+    width: 70vw; /* Smaller camera screen */
+    height: 65vh;
+    background: #000;
+    border-radius: 50px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5); /* Flat sleek look */
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#timer-container {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 70px;
+    height: 70px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 5px solid var(--toy-yellow);
+    border-radius: 50%;
+    display: none; /* Hidden by default */
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    z-index: 100;
+    pointer-events: none;
+}
+
+#timer-count {
+    font-size: 32px;
+    font-weight: 900;
+    color: var(--toy-orange);
+    font-family: 'Outfit', sans-serif;
+}
+
+#brain-badge {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    padding: 8px 15px;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(5px);
+    color: white;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: 'Outfit', sans-serif;
+    z-index: 100;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    pointer-events: none;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+#brain-badge.active {
+    opacity: 1;
+}
+
+.pulse-timer {
+    animation: pulse-ring 1s ease-out;
+}
+
+@keyframes pulse-ring {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.3); opacity: 0.8; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+#webcam {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1); /* Mirror effect */
+    opacity: 0;
+    transition: opacity 1.5s ease;
+}
+
+#webcam.active {
+    opacity: 1;
+}
+
+/* Magic Overlay (Inner Frame Flash) */
+#magic-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 10;
+    opacity: 0;
+}
+
+#magic-overlay.flash-active {
+    animation: magicFlash 1.5s ease-out forwards;
+}
+
+@keyframes magicFlash {
+    0% { 
+        opacity: 0;
+        background: radial-gradient(circle, var(--toy-cyan) 0%, transparent 70%);
+        transform: scale(0.5);
+    }
+    30% { 
+        opacity: 0.9; 
+        background: radial-gradient(circle, white 0%, transparent 80%);
+        transform: scale(1.5);
+    }
+    100% { 
+        opacity: 0;
+        transform: scale(1);
+    }
+}

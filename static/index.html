@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gooli's Magic Zoo</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+</head>
+    <div id="plush-mountain"></div>
+
+    <!-- Magical Sparkles -->
+    <div class="firefly"></div>
+    <div class="firefly"></div>
+    <div class="firefly"></div>
+    <div class="firefly"></div>
+    <div class="firefly"></div>
+    <div class="firefly"></div>
+
+    <div id="start-screen">
+        <img id="logo" src="logo.png" alt="Gooli's Magic Zoo">
+        <button id="startButton">lets go!</button>
+    </div>
+
+    <main id="camera-frame">
+        <div id="animal-name-container"></div>
+        <video id="webcam" autoplay playsinline></video>
+        <canvas id="canvas" style="display:none;"></canvas>
+        
+        <div id="timer-container">
+            <span id="timer-count"></span>
+        </div>
+        <div id="brain-badge"></div>
+        <div id="magic-overlay"></div>
+    </main>
+        
+    <!-- Flash effect container -->
+    <div id="flash-overlay"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>

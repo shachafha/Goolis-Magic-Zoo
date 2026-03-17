@@ -1,0 +1,20 @@
+# Virtual Environment
+venv/
+
+# Environment Variables
+.env
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDEs
+.idea/
+.vscode/
+
+# macOS
+.DS_Store
+
+# YOLO Weights
+yolov8n.pt
