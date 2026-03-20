@@ -9,9 +9,34 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
 </head>
+<body>
     <div id="plush-mountain"></div>
 
-    <!-- Magical Sparkles -->
+    <!-- Magical Sparkles (Fireflies) -->
+    <div class="firefly"></div>
+    <div class="firefly"></div>
+    <div class="firefly"></div>
+    <div class="firefly"></div>
+    <div class="firefly"></div>
+    <div class="firefly"></div>
+    <div class="firefly"></div>
+    <div class="firefly"></div>
+    <div class="firefly"></div>
+    <div class="firefly"></div>
+    <div class="firefly"></div>
+    <div class="firefly"></div>
+    <div class="firefly"></div>
+    <div class="firefly"></div>
+    <div class="firefly"></div>
+    <div class="firefly"></div>
+    <div class="firefly"></div>
+    <div class="firefly"></div>
+    <div class="firefly"></div>
+    <div class="firefly"></div>
+    <div class="firefly"></div>
+    <div class="firefly"></div>
+    <div class="firefly"></div>
+    <div class="firefly"></div>
     <div class="firefly"></div>
     <div class="firefly"></div>
     <div class="firefly"></div>
@@ -20,25 +45,59 @@
     <div class="firefly"></div>
 
     <div id="start-screen">
-        <img id="logo" src="logo.png" alt="Gooli's Magic Zoo">
-        <button id="startButton">lets go!</button>
+      <div id="zoo-layout">
+        <div id="animals-top" class="animal-strip"></div>
+        <div id="zoo-middle">
+          <div id="animals-left" class="animal-strip"></div>
+          <img id="logo" src="logo.png" alt="Gooli's Magic Zoo">
+          <div id="animals-right" class="animal-strip"></div>
+        </div>
+        <div id="animals-bottom" class="animal-strip"></div>
+        <div id="mode-buttons">
+          <button id="startButton">🔍 Explore</button>
+          <button id="quizButton">🎯 Quiz Me!</button>
+        </div>
+      </div>
     </div>
 
     <main id="camera-frame">
         <div id="animal-name-container"></div>
+        <div id="celebration-overlay">
+            <img id="celebration-image" src="" alt="">
+            <div id="celebration-name"></div>
+        </div>
         <video id="webcam" autoplay playsinline></video>
         <canvas id="canvas" style="display:none;"></canvas>
         
-        <div id="timer-container">
-            <span id="timer-count"></span>
-        </div>
+        <!-- Animal frame strips -->
+        <div id="cam-animals-top" class="cam-strip"></div>
+        <div id="cam-animals-bottom" class="cam-strip"></div>
+        <div id="cam-animals-left" class="cam-strip"></div>
+        <div id="cam-animals-right" class="cam-strip"></div>
+
+
         <div id="brain-badge"></div>
+        <div id="quiz-overlay" class="hidden">
+          <div id="quiz-target-label">Find the...</div>
+          <div id="quiz-target-animal"></div>
+          <div id="quiz-hint-image-container" class="hidden">
+            <img id="quiz-hint-image" src="" alt="hint" />
+          </div>
+          <div id="quiz-timer-bar-container" class="hidden">
+            <div id="quiz-timer-bar"></div>
+          </div>
+          <div id="quiz-timeout-options" class="hidden">
+            <button id="quiz-skip-btn">Skip ⏭️</button>
+          </div>
+        </div>
+        <div id="quiz-success-overlay" class="hidden">
+          <div id="quiz-success-text">🎉 You found it!</div>
+        </div>
         <div id="magic-overlay"></div>
+        <div id="cam-vignette"></div>
+        <button id="backButton">← Back</button>
     </main>
         
-    <!-- Flash effect container -->
-    <div id="flash-overlay"></div>
-
     <script src="app.js"></script>
 </body>
 </html>

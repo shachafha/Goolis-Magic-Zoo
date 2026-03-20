@@ -1,27 +1,35 @@
 // Global animal configuration
 let animalConfig = {};
 const webcamElement = document.getElementById('webcam');
-const startButton = document.getElementById('startButton');
 const startScreen = document.getElementById('start-screen');
 const magicOverlay = document.getElementById('magic-overlay');
 const animalNameContainer = document.getElementById('animal-name-container');
 const plushMountain = document.getElementById('plush-mountain');
 
 let availableAnimals = [];
+let quizMode = false;
 
 // 1. Initialization: Fetch animal configuration and create plush pile
 async function init() {
     try {
-        // Fetch sound config
         const configResponse = await fetch('/api/config');
-        animalConfig = await configResponse.json();
+        const configJson = await configResponse.json();
+        if (configJson.success) {
+            animalConfig = configJson.data;
+        } else {
+            console.error('Failed to load sound config:', configJson.error);
+        }
 
-        // Fetch animal images list
         const imagesResponse = await fetch('/api/images');
-        availableAnimals = await imagesResponse.json();
+        const imagesJson = await imagesResponse.json();
+        if (imagesJson.success) {
+            availableAnimals = imagesJson.data;
+        } else {
+            console.error('Failed to load animal images:', imagesJson.error);
+        }
 
         if (availableAnimals.length > 0) {
-            createPlushPile();
+            createStartScreenPile();
         } else {
             console.warn('No animals found in animal_images/ folder.');
         }
@@ -30,264 +38,429 @@ async function init() {
     }
 }
 
-// 1b. Create the background "Plush Mountain" (Less is More Refinement)
-function createPlushPile() {
+// 1b. Start Screen Layout: Distribute animals into CSS flex strips
+function createStartScreenPile() {
     if (!availableAnimals || availableAnimals.length === 0) return;
-    
-    // Clear existing pile to prevent duplicates on re-init
-    plushMountain.innerHTML = '';
-    console.log(`Creating plush pile with ${availableAnimals.length} unique animals:`, availableAnimals);
 
-    // 1. Each animal exactly once
-    let roster = [...availableAnimals];
-    const targetTotal = roster.length;
+    const topEl = document.getElementById('animals-top');
+    const bottomEl = document.getElementById('animals-bottom');
+    const leftEl = document.getElementById('animals-left');
+    const rightEl = document.getElementById('animals-right');
+    [topEl, bottomEl, leftEl, rightEl].forEach(el => el.innerHTML = '');
 
-    // 2. Shuffle roster
-    roster = roster.sort(() => Math.random() - 0.5);
+    let roster = [...availableAnimals].sort(() => Math.random() - 0.5);
+    const total = roster.length;
+    const perSide = Math.floor(total / 4);
+    const extras = total % 4;
 
-    // 3. Distribute slots proportionally across the 4 edges
-    const slots = [];
-    const countPerEdge = Math.ceil(targetTotal / 4);
-    
-    // Top Edge
-    for (let i = 0; i < countPerEdge && slots.length < targetTotal; i++) {
-        const x = -10 + (i * (100 / countPerEdge)); 
-        const y = -12 + Math.random() * 8;
-        slots.push({ x, y, edge: 'top' });
-    }
+    const counts = [perSide, perSide, perSide, perSide];
+    for (let i = 0; i < extras; i++) counts[i]++;
 
-    // Bottom Edge
-    for (let i = 0; i < countPerEdge && slots.length < targetTotal; i++) {
-        const x = -10 + (i * (100 / countPerEdge));
-        const y = 70 + Math.random() * 15;
-        slots.push({ x, y, edge: 'bottom' });
-    }
-
-    // Left Edge
-    for (let i = 0; i < countPerEdge && slots.length < targetTotal; i++) {
-        const x = -5 + Math.random() * 10;
-        const y = 2 + (i * (80 / countPerEdge));
-        slots.push({ x, y, edge: 'left' });
-    }
-
-    // Right Edge
-    while (slots.length < targetTotal) {
-        const i = slots.length % countPerEdge;
-        const x = 75 + Math.random() * 15;
-        const y = 8 + (i * (80 / countPerEdge));
-        slots.push({ x, y, edge: 'right' });
-    }
-
-    // 4. Place Animals
-    roster.forEach((animal, index) => {
-        if (index >= slots.length) return;
-        const slot = slots[index];
-        
-        const img = document.createElement('img');
-        img.src = `/animal_images/${animal}.png`;
-        img.className = 'plush-bg-item';
-        img.dataset.animal = animal;
-        
-        img.style.left = slot.x + 'vw';
-        img.style.top = slot.y + 'vh';
-        
-        // Immersive Overlap logic: ONLY SIDE TOYS can overlap
-        let onTopProb = 0;
-        if (slot.edge === 'left' || slot.edge === 'right') {
-            onTopProb = 0.45;
+    const strips = [topEl, bottomEl, leftEl, rightEl];
+    let idx = 0;
+    strips.forEach((strip, s) => {
+        for (let i = 0; i < counts[s]; i++) {
+            if (idx >= total) return;
+            const animal = roster[idx++];
+            const img = document.createElement('img');
+            img.src = `/animal_images/${animal}.png`;
+            img.dataset.animal = animal;
+            img.title = animal;
+            const rotation = Math.floor(Math.random() * 30) - 15;
+            const scale = 0.9 + Math.random() * 0.2;
+            img.style.transform = `rotate(${rotation}deg) scale(${scale})`;
+            img.style.cursor = 'pointer';
+            img.addEventListener('click', () => {
+                playAnimalSound(animal);
+            });
+            strip.appendChild(img);
         }
-        img.style.zIndex = Math.random() < onTopProb ? 20 : 5;
-        
-        const scale = 0.8 + Math.random() * 0.5;
-        const rotation = Math.floor(Math.random() * 70) - 35;
-        img.style.transform = `rotate(${rotation}deg) scale(${scale})`;
-        
-        img.addEventListener('click', () => {
-            playAnimalSound(animal);
-            highlightAnimal(animal, 3000);
-        });
-        
-        plushMountain.appendChild(img);
+    });
+}
+
+// 1c. Camera Frame Layout: Animals form a border around the live feed
+function createCameraFramePile() {
+    if (!availableAnimals || availableAnimals.length === 0) return;
+
+    const topEl = document.getElementById('cam-animals-top');
+    const bottomEl = document.getElementById('cam-animals-bottom');
+    const leftEl = document.getElementById('cam-animals-left');
+    const rightEl = document.getElementById('cam-animals-right');
+    [topEl, bottomEl, leftEl, rightEl].forEach(el => el.innerHTML = '');
+
+    let roster = [...availableAnimals].sort(() => Math.random() - 0.5);
+    const total = roster.length;
+    const perSide = Math.floor(total / 4);
+    const extras = total % 4;
+
+    const counts = [perSide, perSide, perSide, perSide];
+    for (let i = 0; i < extras; i++) counts[i]++;
+
+    const strips = [topEl, bottomEl, leftEl, rightEl];
+    let idx = 0;
+    strips.forEach((strip, s) => {
+        for (let i = 0; i < counts[s]; i++) {
+            if (idx >= total) return;
+            const animal = roster[idx++];
+            const img = document.createElement('img');
+            img.src = `/animal_images/${animal}.png`;
+            img.dataset.animal = animal;
+            const rotation = Math.floor(Math.random() * 20) - 10;
+            const scale = 0.9 + Math.random() * 0.2;
+            img.style.transform = `rotate(${rotation}deg) scale(${scale})`;
+            strip.appendChild(img);
+        }
     });
 }
 
 // 2. Disable right-click for toddler-proofing
 document.addEventListener('contextmenu', (e) => e.preventDefault());
 
-// 3. Start Button Logic
-startButton.addEventListener('click', async () => {
+// 3. Shared camera startup
+async function startCamera() {
     try {
-        // Request Webcam
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: { 
-                facingMode: 'user',
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: 'environment',
                 width: { ideal: 1280 },
                 height: { ideal: 720 }
             },
-            audio: false 
+            audio: false
         });
-        
         webcamElement.srcObject = stream;
-        
-        // Transition from splash to camera
         webcamElement.onloadedmetadata = () => {
             webcamElement.classList.add('active');
             startScreen.classList.add('hidden');
-            // Start the capture loop
-            startAutoCapture();
+            createCameraFramePile();
+            if (quizMode) {
+                startQuizMode();
+            } else {
+                startAutoCapture();
+            }
         };
-
     } catch (error) {
         console.error('Permission denied or error starting:', error);
-        alert('Please allow webcam access to play!');
+        alert('Please allow camera access to play!');
     }
+}
+
+document.getElementById('startButton').addEventListener('click', () => {
+    quizMode = false;
+    startCamera();
 });
 
-const timerCount = document.getElementById('timer-count');
-const timerContainer = document.getElementById('timer-container');
+document.getElementById('quizButton').addEventListener('click', () => {
+    quizMode = true;
+    startCamera();
+});
 
-let captureTimer = null;
-let secondsRemaining = 0;
+document.getElementById('backButton').addEventListener('click', () => {
+    // Stop everything
+    stopCapture();
+    clearTimeout(quizHintTimeout);
+    clearTimeout(quizTimerTimeout);
+    clearTimeout(quizHintTimeout); // extra safety
+    quizActive = false;
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
 
-// 4. Capture and Analyze
-async function startAutoCapture() {
-    // Hidden initially, show when capture starts
-    timerContainer.style.display = 'flex';
-    
-    const initialDelay = 4000; // 4s initial delay
-    await runCountdown(initialDelay / 1000);
-    captureImage();
-}
+    // Stop webcam
+    if (webcamElement.srcObject) {
+        webcamElement.srcObject.getTracks().forEach(t => t.stop());
+        webcamElement.srcObject = null;
+    }
+    webcamElement.classList.remove('active');
 
-async function runCountdown(seconds) {
-    secondsRemaining = seconds;
-    updateTimerUI();
-    
-    return new Promise((resolve) => {
-        if (captureTimer) clearInterval(captureTimer);
-        
-        captureTimer = setInterval(() => {
-            secondsRemaining--;
-            updateTimerUI();
-            
-            if (secondsRemaining <= 0) {
-                clearInterval(captureTimer);
-                resolve();
-            }
-        }, 1000);
+    // Clear camera frame strips (prevent leftovers)
+    ['cam-animals-top', 'cam-animals-bottom', 'cam-animals-left', 'cam-animals-right'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = '';
     });
-}
 
-function updateTimerUI() {
-    if (secondsRemaining >= 0) {
-        timerCount.innerText = secondsRemaining;
-        // Visual feedback
-        timerCount.classList.remove('pulse-timer');
-        void timerCount.offsetWidth; // trigger reflow
-        timerCount.classList.add('pulse-timer');
-    }
-}
+    // Clear animal name container
+    animalNameContainer.classList.remove('visible');
+    animalNameContainer.textContent = '';
 
-async function captureImage() {
-    if (!webcamElement.srcObject) {
-        console.warn('Webcam stream not active, stopping capture.');
-        return;
-    }
+    // Clear celebration overlay
+    const overlay = document.getElementById('celebration-overlay');
+    if (overlay) overlay.classList.remove('active', 'fade-image');
+
+    // Hide quiz UI
+    document.getElementById('quiz-overlay').classList.add('hidden');
+    document.getElementById('quiz-success-overlay').classList.add('hidden');
+    document.getElementById('quiz-hint-image-container').classList.add('hidden');
+    document.getElementById('quiz-timer-bar-container').classList.add('hidden');
+    document.getElementById('quiz-timeout-options').classList.add('hidden');
 
     const badge = document.getElementById('brain-badge');
     if (badge) badge.classList.remove('active');
 
-    // Flash effect
-    const flash = document.createElement('div');
-    flash.className = 'magic-flash';
-    document.body.appendChild(flash);
-    setTimeout(() => flash.remove(), 500);
+    // Show start screen
+    startScreen.classList.remove('hidden');
+});
 
+// 4. Silent background polling
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+let currentDelay = 3000;
+let captureRunning = false;
+
+async function startAutoCapture() {
+    if (captureRunning) return;
+    captureRunning = true;
+    await sleep(2000);
+    captureLoop();
+}
+
+async function captureLoop() {
+    while (captureRunning) {
+        if (!webcamElement.srcObject) { captureRunning = false; return; }
+        await doCapture();
+        await sleep(currentDelay);
+    }
+}
+
+function stopCapture() {
+    captureRunning = false;
+}
+
+async function doCapture() {
     const canvas = document.createElement('canvas');
     canvas.width = webcamElement.videoWidth;
     canvas.height = webcamElement.videoHeight;
-    const ctx = canvas.getContext('2d');
-    ctx.drawImage(webcamElement, 0, 0, canvas.width, canvas.height);
-
-    const imageData = canvas.toDataURL('image/jpeg', 0.8); // Use 0.8 quality for JPEG
+    canvas.getContext('2d').drawImage(webcamElement, 0, 0);
+    const imageData = canvas.toDataURL('image/jpeg', 0.8);
 
     try {
         const response = await fetch('/api/analyze', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ base64_image: imageData }) // Changed key to base64_image as per original analyzeFrame
+            body: JSON.stringify({ base64_image: imageData })
         });
+        const result = await response.json();
+        if (!result.success) { currentDelay = 3000; return; }
 
-        const data = await response.json();
-        console.log('Analysis result:', data);
-
+        const data = result.data;
         const badge = document.getElementById('brain-badge');
-        if (badge) {
-            if (data.animal === 'unknown') {
-                badge.textContent = 'Searching... 🕵️';
-            } else if (data.method) {
-                const methodLabel = data.method === 'yolo' ? 'YOLO 🏎️' : 'Gemini ✨';
-                badge.textContent = methodLabel;
+
+        if (data.animal && data.animal !== 'unknown') {
+            if (quizMode) {
+                quizSuccess(data.animal);
+            } else {
+                if (badge) { badge.textContent = 'Found it!'; badge.classList.add('active'); }
+                handleSuccess(data.animal);
+                highlightAnimal(data.animal, 12000);
+                currentDelay = 12000;
             }
-            badge.classList.add('active');
+        } else {
+            if (badge) { badge.textContent = 'Looking...'; badge.classList.add('active'); }
+            currentDelay = 3000;
         }
-
-        let nextDelay = 4000; // Default: retry in 4s if unknown
-
-        if (data.animal && data.animal !== "unknown" && animalConfig[data.animal]) { // Added animalConfig check
-            handleSuccess(data.animal);
-            highlightAnimal(data.animal, 15000); // Added highlightAnimal call
-            nextDelay = 8000; // Success: wait 8s
-        }
-
-        // Wait then repeat
-        await runCountdown(nextDelay / 1000);
-        captureImage();
-        
-    } catch (error) {
-        console.error('Analysis failed:', error);
-        await runCountdown(4); // Error: retry in 4s
-        captureImage();
+    } catch (e) {
+        console.error('Capture error:', e);
+        currentDelay = 4000;
     }
 }
 
-// 5. Feedback Logic
+// 5. Feedback Logic (Explore mode)
 function handleSuccess(animal) {
     playAnimalSound(animal);
-    
-    // Trigger Magic Flash in frame
     magicOverlay.classList.remove('flash-active');
-    void magicOverlay.offsetWidth; // Trigger reflow
+    void magicOverlay.offsetWidth;
     magicOverlay.classList.add('flash-active');
-
     showNameAnimation(animal);
 }
 
 function playAnimalSound(animal) {
     const paths = animalConfig[animal];
-    if (!paths || paths.length === 0) return;
-    
+    if (!paths || paths.length === 0) {
+        console.log(`No sound for "${animal}" — showing name only`);
+        return;
+    }
     const randomPath = paths[Math.floor(Math.random() * paths.length)];
     const audio = new Audio(randomPath);
     audio.play();
 }
 
 function showNameAnimation(animal) {
-    animalNameContainer.textContent = animal;
-    animalNameContainer.classList.remove('pop-anim');
-    void animalNameContainer.offsetWidth; // Trigger reflow
-    animalNameContainer.classList.add('pop-anim');
+    const overlay = document.getElementById('celebration-overlay');
+    const celebImage = document.getElementById('celebration-image');
+    const celebName = document.getElementById('celebration-name');
+
+    overlay.classList.remove('active', 'fade-image');
+    animalNameContainer.classList.remove('visible');
+    animalNameContainer.textContent = '';
+
+    celebImage.src = `/animal_images/${animal}.png`;
+    celebName.textContent = animal;
+
+    requestAnimationFrame(() => {
+        overlay.classList.add('active');
+    });
+
+    setTimeout(() => {
+        overlay.classList.add('fade-image');
+    }, 2000);
+
+    setTimeout(() => {
+        overlay.classList.remove('active', 'fade-image');
+        animalNameContainer.textContent = animal;
+        animalNameContainer.classList.add('visible');
+    }, 2500);
+
+    setTimeout(() => {
+        animalNameContainer.classList.remove('visible');
+    }, 10000);
 }
 
-// 6. Highlight background items
+// 6. Highlight camera frame animals
 function highlightAnimal(animal, duration) {
-    const items = document.querySelectorAll(`.plush-bg-item[data-animal="${animal}"]`);
+    const items = document.querySelectorAll(
+        `#cam-animals-top img[data-animal='${animal}'],
+         #cam-animals-bottom img[data-animal='${animal}'],
+         #cam-animals-left img[data-animal='${animal}'],
+         #cam-animals-right img[data-animal='${animal}']`
+    );
     items.forEach(item => item.classList.add('celebrate'));
-    
     setTimeout(() => {
         items.forEach(item => item.classList.remove('celebrate'));
     }, duration);
 }
 
+// ============================================
+// 7. QUIZ MODE
+// ============================================
+
+const HINT_DELAY_MS = 20000;
+const HINT_DURATION_MS = 8000;
+
+let quizTargetAnimal = null;
+let quizHintTimeout = null;
+let quizTimerTimeout = null;
+let quizActive = false;
+
+function startQuizMode() {
+    document.getElementById('quiz-overlay').classList.remove('hidden');
+    pickNextQuizAnimal();
+}
+
+function pickNextQuizAnimal() {
+    quizActive = true;
+
+    // Clear previous state
+    clearTimeout(quizHintTimeout);
+    clearTimeout(quizTimerTimeout);
+    document.getElementById('quiz-hint-image-container').classList.add('hidden');
+    document.getElementById('quiz-timer-bar-container').classList.add('hidden');
+    document.getElementById('quiz-success-overlay').classList.add('hidden');
+    document.getElementById('quiz-timeout-options').classList.add('hidden');
+
+    // Pick a random animal that has a sound (for the best experience)
+    const animals = Object.keys(animalConfig).filter(a => availableAnimals.includes(a));
+    if (animals.length === 0) return;
+    quizTargetAnimal = animals[Math.floor(Math.random() * animals.length)];
+
+    // Show the target name with pop animation
+    const targetEl = document.getElementById('quiz-target-animal');
+    targetEl.textContent = quizTargetAnimal;
+    targetEl.classList.remove('pop-anim');
+    void targetEl.offsetWidth;
+    targetEl.classList.add('pop-anim');
+
+    // Text-to-speech
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance('Find me the ' + quizTargetAnimal);
+        utterance.rate = 0.85;
+        utterance.pitch = 1.2;
+        window.speechSynthesis.speak(utterance);
+    }
+
+    // Start capture polling
+    captureRunning = false; // reset
+    startAutoCapture();
+
+    // After delay, show hint image
+    quizHintTimeout = setTimeout(() => {
+        showQuizHint();
+    }, HINT_DELAY_MS);
+}
+
+function showQuizHint() {
+    const hintImg = document.getElementById('quiz-hint-image');
+    hintImg.src = '/animal_images/' + quizTargetAnimal + '.png';
+    document.getElementById('quiz-hint-image-container').classList.remove('hidden');
+
+    // Speak hint
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance("Here is a hint!");
+        utterance.rate = 0.85;
+        utterance.pitch = 1.2;
+        window.speechSynthesis.speak(utterance);
+    }
+
+    // Start the countdown timer bar
+    const timerBar = document.getElementById('quiz-timer-bar');
+    const timerContainer = document.getElementById('quiz-timer-bar-container');
+    timerContainer.classList.remove('hidden');
+    timerBar.style.transition = 'none';
+    timerBar.style.width = '100%';
+    void timerBar.offsetWidth;
+    timerBar.style.transition = `width ${HINT_DURATION_MS}ms linear`;
+    timerBar.style.width = '0%';
+
+    // After timer runs out, show the Skip button but STAY active
+    quizTimerTimeout = setTimeout(() => {
+        if (quizActive) {
+            document.getElementById('quiz-timeout-options').classList.remove('hidden');
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const skipUtterance = new SpeechSynthesisUtterance("Still looking? You can skip if you want, or just keep trying!");
+                skipUtterance.rate = 0.85;
+                window.speechSynthesis.speak(skipUtterance);
+            }
+        }
+    }, HINT_DURATION_MS);
+}
+
+function quizSuccess(animal) {
+    if (!quizActive || animal !== quizTargetAnimal) return;
+    quizActive = false;
+
+    clearTimeout(quizHintTimeout);
+    clearTimeout(quizTimerTimeout);
+    stopCapture();
+
+    // Show success overlay
+    document.getElementById('quiz-success-overlay').classList.remove('hidden');
+
+    // Speak success
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance('Amazing! You found the ' + animal + '!');
+        utterance.rate = 0.85;
+        utterance.pitch = 1.3;
+        window.speechSynthesis.speak(utterance);
+    }
+
+    // Play animal sound and highlight
+    playAnimalSound(animal);
+    highlightAnimal(animal, 3500);
+
+    // After 3.5s, pick next animal
+    setTimeout(() => {
+        pickNextQuizAnimal();
+    }, 3500);
+}
+
 // Initialize on load
-window.addEventListener('load', init);
+window.addEventListener('load', () => {
+    init();
+    // Quiz skip listener
+    document.getElementById('quiz-skip-btn').addEventListener('click', () => {
+        if (quizActive) pickNextQuizAnimal();
+    });
+});
+
