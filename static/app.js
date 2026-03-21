@@ -131,6 +131,7 @@ async function startCamera() {
         webcamElement.onloadedmetadata = () => {
             webcamElement.classList.add('active');
             startScreen.classList.add('hidden');
+            document.getElementById('backButton').classList.remove('hidden');
             createCameraFramePile();
             if (quizMode) {
                 startQuizMode();
@@ -155,6 +156,9 @@ document.getElementById('quizButton').addEventListener('click', () => {
 });
 
 document.getElementById('backButton').addEventListener('click', () => {
+    // Hide back button
+    document.getElementById('backButton').classList.add('hidden');
+
     // Stop everything
     stopCapture();
     clearTimeout(quizHintTimeout);

@@ -6,3 +6,6 @@ python-multipart
 ultralytics
 opencv-python-headless
 numpy<2.0
+transformers
+torch
+pillow
