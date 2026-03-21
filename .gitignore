@@ -21,3 +21,4 @@ yolov8n.pt
 
 # Google Cloud SDK
 google-cloud-sdk/
+google-cloud-cli-*.tar.gz

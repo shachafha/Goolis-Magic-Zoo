@@ -8,12 +8,15 @@ const plushMountain = document.getElementById('plush-mountain');
 const backButton = document.getElementById('backButton');
 const cameraSwitchButton = document.getElementById('cameraSwitchButton');
 const brainBadge = document.getElementById('brain-badge');
+const audioPlayer = document.getElementById('audio-player');
 
 let availableAnimals = [];
 let quizMode = false;
 let currentFacingMode = 'user';
 let audioContext = null;
 const soundBufferCache = new Map();
+let audioPrimed = false;
+let soundsPreloaded = false;
 
 // 1. Initialization: Fetch animal configuration and create plush pile
 async function init() {
@@ -149,6 +152,44 @@ async function unlockAudio() {
     }
 }
 
+async function primeAudioPlayback() {
+    if (!audioPlayer || audioPrimed) {
+        return;
+    }
+
+    try {
+        audioPlayer.src = 'data:audio/wav;base64,UklGRlQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YTAAAAA=';
+        audioPlayer.muted = true;
+        await audioPlayer.play();
+        audioPlayer.pause();
+        audioPlayer.currentTime = 0;
+        audioPlayer.muted = false;
+        audioPlayer.removeAttribute('src');
+        audioPlayer.load();
+        audioPrimed = true;
+    } catch (error) {
+        console.warn('Audio element prime failed:', error);
+    }
+}
+
+async function preloadAllSounds() {
+    if (soundsPreloaded || !animalConfig) {
+        return;
+    }
+
+    soundsPreloaded = true;
+    const uniquePaths = [...new Set(Object.values(animalConfig).flat())];
+
+    await Promise.allSettled(uniquePaths.map(async (path) => {
+        try {
+            const response = await fetch(path, { cache: 'force-cache' });
+            await response.arrayBuffer();
+        } catch (error) {
+            console.warn('Sound preload failed:', path, error);
+        }
+    }));
+}
+
 async function getCameraStream(facingMode) {
     const videoVariants = [
         {
@@ -184,7 +225,9 @@ async function startCamera(facingMode = currentFacingMode) {
     stopCapture();
 
     try {
+        await primeAudioPlayback();
         await unlockAudio();
+        void preloadAllSounds();
         stopWebcam();
 
         const stream = await getCameraStream(currentFacingMode);
@@ -242,8 +285,10 @@ backButton.addEventListener('click', () => {
     stopCapture();
     clearTimeout(quizHintTimeout);
     clearTimeout(quizTimerTimeout);
+    clearTimeout(quizNextRoundTimeout);
     clearTimeout(quizHintTimeout); // extra safety
     quizActive = false;
+    quizTransitioning = false;
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
 
     // Stop webcam
@@ -305,6 +350,10 @@ function stopCapture() {
 }
 
 async function doCapture() {
+    if (quizMode && quizTransitioning) {
+        return;
+    }
+
     const canvas = document.createElement('canvas');
     canvas.width = webcamElement.videoWidth;
     canvas.height = webcamElement.videoHeight;
@@ -388,6 +437,19 @@ async function playAnimalSound(animal) {
     const randomPath = paths[Math.floor(Math.random() * paths.length)];
     const unlocked = await unlockAudio();
 
+    if (audioPlayer) {
+        try {
+            audioPlayer.pause();
+            audioPlayer.src = randomPath;
+            audioPlayer.load();
+            audioPlayer.currentTime = 0;
+            await audioPlayer.play();
+            return;
+        } catch (error) {
+            console.warn('Persistent audio element playback failed:', error);
+        }
+    }
+
     if (unlocked && audioContext) {
         try {
             const buffer = await loadSoundBuffer(randomPath);
@@ -399,15 +461,9 @@ async function playAnimalSound(animal) {
                 return;
             }
         } catch (error) {
-            console.warn('Web Audio playback failed, falling back to HTML audio:', error);
+            console.warn('Web Audio playback fallback failed:', error);
         }
     }
-
-    const audio = new Audio(randomPath);
-    audio.playsInline = true;
-    audio.play().catch(error => {
-        console.warn('Audio playback failed:', error);
-    });
 }
 
 function showNameAnimation(animal) {
@@ -465,7 +521,9 @@ const HINT_DURATION_MS = 8000;
 let quizTargetAnimal = null;
 let quizHintTimeout = null;
 let quizTimerTimeout = null;
+let quizNextRoundTimeout = null;
 let quizActive = false;
+let quizTransitioning = false;
 
 function startQuizMode() {
     document.getElementById('quiz-overlay').classList.remove('hidden');
@@ -474,10 +532,12 @@ function startQuizMode() {
 
 function pickNextQuizAnimal() {
     quizActive = true;
+    quizTransitioning = false;
 
     // Clear previous state
     clearTimeout(quizHintTimeout);
     clearTimeout(quizTimerTimeout);
+    clearTimeout(quizNextRoundTimeout);
     document.getElementById('quiz-hint-image-container').classList.add('hidden');
     document.getElementById('quiz-timer-bar-container').classList.add('hidden');
     document.getElementById('quiz-success-overlay').classList.add('hidden');
@@ -552,12 +612,14 @@ function showQuizHint() {
     }, HINT_DURATION_MS);
 }
 
-function quizSuccess(animal) {
-    if (!quizActive || animal !== quizTargetAnimal) return;
+async function quizSuccess(animal) {
+    if (!quizActive || quizTransitioning || animal !== quizTargetAnimal) return;
     quizActive = false;
+    quizTransitioning = true;
 
     clearTimeout(quizHintTimeout);
     clearTimeout(quizTimerTimeout);
+    clearTimeout(quizNextRoundTimeout);
     stopCapture();
 
     // Show success overlay
@@ -573,11 +635,11 @@ function quizSuccess(animal) {
     }
 
     // Play animal sound and highlight
-    playAnimalSound(animal);
+    await playAnimalSound(animal);
     highlightAnimal(animal, 3500);
 
     // After 3.5s, pick next animal
-    setTimeout(() => {
+    quizNextRoundTimeout = setTimeout(() => {
         pickNextQuizAnimal();
     }, 3500);
 }

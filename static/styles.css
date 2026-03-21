@@ -288,6 +288,26 @@ h1, h2, h3 {
     }
 }
 
+@media (hover: hover) and (pointer: fine) {
+    .camera-action {
+        display: none !important;
+    }
+}
+
+@media (hover: none), (pointer: coarse) {
+    .camera-action {
+        top: calc(env(safe-area-inset-top, 0px) + 18px);
+        bottom: auto;
+        left: 18px;
+    }
+
+    #backButton {
+        top: calc(env(safe-area-inset-top, 0px) + 18px);
+        bottom: auto;
+        right: 18px;
+    }
+}
+
 /* UI Elements - Desktop Default */
 
 #brain-badge {
