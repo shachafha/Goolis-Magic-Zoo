@@ -1,0 +1,14 @@
+.gcloudignore
+.git
+.gitignore
+#!include:.gitignore
+
+# Local Google Cloud CLI install artifacts should never be part of the build context.
+google-cloud-sdk/
+google-cloud-cli-*.tar.gz
+
+# Local Python/runtime noise.
+.env
+.venv/
+.pycache/
+__pycache__/
