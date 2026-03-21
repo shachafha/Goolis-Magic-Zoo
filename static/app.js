@@ -17,6 +17,9 @@ let audioContext = null;
 const soundBufferCache = new Map();
 let audioPrimed = false;
 let soundsPreloaded = false;
+let warmupPromise = null;
+let exploreTransitioning = false;
+let exploreResetTimeout = null;
 
 // 1. Initialization: Fetch animal configuration and create plush pile
 async function init() {
@@ -190,6 +193,33 @@ async function preloadAllSounds() {
     }));
 }
 
+async function warmUpInference() {
+    if (warmupPromise) {
+        return warmupPromise;
+    }
+
+    warmupPromise = fetch('/api/warmup', { method: 'POST' })
+        .then(response => response.json())
+        .catch(error => {
+            console.warn('Inference warmup failed:', error);
+            return null;
+        });
+
+    return warmupPromise;
+}
+
+function greetAbigail() {
+    if (!('speechSynthesis' in window)) {
+        return;
+    }
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance('Hello Abigail, I missed you!');
+    utterance.rate = 0.92;
+    utterance.pitch = 1.15;
+    window.speechSynthesis.speak(utterance);
+}
+
 async function getCameraStream(facingMode) {
     const videoVariants = [
         {
@@ -244,6 +274,17 @@ async function startCamera(facingMode = currentFacingMode) {
             backButton.classList.remove('hidden');
             cameraSwitchButton.classList.remove('hidden');
             createCameraFramePile();
+            exploreTransitioning = false;
+
+            if (brainBadge) {
+                brainBadge.textContent = 'Getting ready...';
+                brainBadge.classList.add('active');
+            }
+
+            await Promise.all([
+                preloadAllSounds(),
+                warmUpInference()
+            ]);
 
             if (quizMode) {
                 if (quizActive) {
@@ -263,11 +304,13 @@ async function startCamera(facingMode = currentFacingMode) {
 
 document.getElementById('startButton').addEventListener('click', () => {
     quizMode = false;
+    greetAbigail();
     startCamera('user');
 });
 
 document.getElementById('quizButton').addEventListener('click', () => {
     quizMode = true;
+    greetAbigail();
     startCamera('user');
 });
 
@@ -283,12 +326,14 @@ backButton.addEventListener('click', () => {
 
     // Stop everything
     stopCapture();
+    clearTimeout(exploreResetTimeout);
     clearTimeout(quizHintTimeout);
     clearTimeout(quizTimerTimeout);
     clearTimeout(quizNextRoundTimeout);
     clearTimeout(quizHintTimeout); // extra safety
     quizActive = false;
     quizTransitioning = false;
+    exploreTransitioning = false;
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
 
     // Stop webcam
@@ -350,7 +395,7 @@ function stopCapture() {
 }
 
 async function doCapture() {
-    if (quizMode && quizTransitioning) {
+    if ((quizMode && quizTransitioning) || (!quizMode && exploreTransitioning)) {
         return;
     }
 
@@ -404,11 +449,20 @@ async function doCapture() {
 
 // 5. Feedback Logic (Explore mode)
 function handleSuccess(animal) {
+    if (exploreTransitioning) {
+        return;
+    }
+
+    exploreTransitioning = true;
+    clearTimeout(exploreResetTimeout);
     playAnimalSound(animal);
     magicOverlay.classList.remove('flash-active');
     void magicOverlay.offsetWidth;
     magicOverlay.classList.add('flash-active');
     showNameAnimation(animal);
+    exploreResetTimeout = setTimeout(() => {
+        exploreTransitioning = false;
+    }, 12000);
 }
 
 async function loadSoundBuffer(path) {

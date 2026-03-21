@@ -32,3 +32,16 @@ async def health_check(request: Request):
         },
         "error": None
     }
+
+
+@router.post("/api/warmup")
+async def warm_up_models():
+    clip_loaded = clip_service.warm_up()
+    return {
+        "success": clip_loaded,
+        "data": {
+            "clip_ready": clip_service.is_ready(),
+            "gemini_ready": gemini_service.is_ready(),
+        },
+        "error": None if clip_loaded else "CLIP warmup not ready yet"
+    }

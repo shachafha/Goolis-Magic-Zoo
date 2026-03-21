@@ -18,6 +18,9 @@ class CLIPService:
     def is_ready(self):
         return self.model is not None and self.processor is not None
 
+    def warm_up(self):
+        return self._ensure_loaded()
+
     def _ensure_loaded(self):
         if self.is_ready():
             return True

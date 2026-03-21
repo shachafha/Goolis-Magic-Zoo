@@ -296,14 +296,14 @@ h1, h2, h3 {
 
 @media (hover: none), (pointer: coarse) {
     .camera-action {
-        top: calc(env(safe-area-inset-top, 0px) + 18px);
-        bottom: auto;
+        top: auto;
+        bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
         left: 18px;
     }
 
     #backButton {
-        top: calc(env(safe-area-inset-top, 0px) + 18px);
-        bottom: auto;
+        top: auto;
+        bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
         right: 18px;
     }
 }
