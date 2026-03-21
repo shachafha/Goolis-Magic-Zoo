@@ -5,9 +5,15 @@ const startScreen = document.getElementById('start-screen');
 const magicOverlay = document.getElementById('magic-overlay');
 const animalNameContainer = document.getElementById('animal-name-container');
 const plushMountain = document.getElementById('plush-mountain');
+const backButton = document.getElementById('backButton');
+const cameraSwitchButton = document.getElementById('cameraSwitchButton');
+const brainBadge = document.getElementById('brain-badge');
 
 let availableAnimals = [];
 let quizMode = false;
+let currentFacingMode = 'user';
+let audioContext = null;
+const soundBufferCache = new Map();
 
 // 1. Initialization: Fetch animal configuration and create plush pile
 async function init() {
@@ -116,25 +122,92 @@ function createCameraFramePile() {
 // 2. Disable right-click for toddler-proofing
 document.addEventListener('contextmenu', (e) => e.preventDefault());
 
-// 3. Shared camera startup
-async function startCamera() {
+function stopWebcam() {
+    if (webcamElement.srcObject) {
+        webcamElement.srcObject.getTracks().forEach(track => track.stop());
+        webcamElement.srcObject = null;
+    }
+}
+
+async function unlockAudio() {
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-                facingMode: 'environment',
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
-            },
-            audio: false
-        });
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return false;
+
+        if (!audioContext) {
+            audioContext = new AudioContextClass();
+        }
+
+        if (audioContext.state === 'suspended') {
+            await audioContext.resume();
+        }
+
+        return audioContext.state === 'running';
+    } catch (error) {
+        console.warn('Audio unlock failed:', error);
+        return false;
+    }
+}
+
+async function getCameraStream(facingMode) {
+    const videoVariants = [
+        {
+            facingMode: { exact: facingMode },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+        },
+        {
+            facingMode,
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+        },
+        {
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+        }
+    ];
+
+    let lastError = null;
+    for (const video of videoVariants) {
+        try {
+            return await navigator.mediaDevices.getUserMedia({ video, audio: false });
+        } catch (error) {
+            lastError = error;
+        }
+    }
+
+    throw lastError;
+}
+
+async function startCamera(facingMode = currentFacingMode) {
+    currentFacingMode = facingMode;
+    stopCapture();
+
+    try {
+        await unlockAudio();
+        stopWebcam();
+
+        const stream = await getCameraStream(currentFacingMode);
         webcamElement.srcObject = stream;
-        webcamElement.onloadedmetadata = () => {
+        webcamElement.onloadedmetadata = async () => {
+            try {
+                await webcamElement.play();
+            } catch (playError) {
+                console.warn('Video playback needs another gesture:', playError);
+            }
+
             webcamElement.classList.add('active');
             startScreen.classList.add('hidden');
-            document.getElementById('backButton').classList.remove('hidden');
+            backButton.classList.remove('hidden');
+            cameraSwitchButton.classList.remove('hidden');
             createCameraFramePile();
+
             if (quizMode) {
-                startQuizMode();
+                if (quizActive) {
+                    startAutoCapture();
+                } else {
+                    startQuizMode();
+                }
             } else {
                 startAutoCapture();
             }
@@ -147,17 +220,23 @@ async function startCamera() {
 
 document.getElementById('startButton').addEventListener('click', () => {
     quizMode = false;
-    startCamera();
+    startCamera('user');
 });
 
 document.getElementById('quizButton').addEventListener('click', () => {
     quizMode = true;
-    startCamera();
+    startCamera('user');
 });
 
-document.getElementById('backButton').addEventListener('click', () => {
+cameraSwitchButton.addEventListener('click', async () => {
+    const nextMode = currentFacingMode === 'user' ? 'environment' : 'user';
+    await startCamera(nextMode);
+});
+
+backButton.addEventListener('click', () => {
     // Hide back button
-    document.getElementById('backButton').classList.add('hidden');
+    backButton.classList.add('hidden');
+    cameraSwitchButton.classList.add('hidden');
 
     // Stop everything
     stopCapture();
@@ -168,10 +247,7 @@ document.getElementById('backButton').addEventListener('click', () => {
     if ('speechSynthesis' in window) window.speechSynthesis.cancel();
 
     // Stop webcam
-    if (webcamElement.srcObject) {
-        webcamElement.srcObject.getTracks().forEach(t => t.stop());
-        webcamElement.srcObject = null;
-    }
+    stopWebcam();
     webcamElement.classList.remove('active');
 
     // Clear camera frame strips (prevent leftovers)
@@ -195,8 +271,7 @@ document.getElementById('backButton').addEventListener('click', () => {
     document.getElementById('quiz-timer-bar-container').classList.add('hidden');
     document.getElementById('quiz-timeout-options').classList.add('hidden');
 
-    const badge = document.getElementById('brain-badge');
-    if (badge) badge.classList.remove('active');
+    if (brainBadge) brainBadge.classList.remove('active');
 
     // Show start screen
     startScreen.classList.remove('hidden');
@@ -243,26 +318,37 @@ async function doCapture() {
             body: JSON.stringify({ base64_image: imageData })
         });
         const result = await response.json();
-        if (!result.success) { currentDelay = 3000; return; }
+        if (!result.success) {
+            console.error('Analyze failed:', result.error);
+            if (brainBadge) {
+                brainBadge.textContent = 'Still waking up...';
+                brainBadge.classList.add('active');
+            }
+            currentDelay = 5000;
+            return;
+        }
 
         const data = result.data;
-        const badge = document.getElementById('brain-badge');
 
         if (data.animal && data.animal !== 'unknown') {
             if (quizMode) {
                 quizSuccess(data.animal);
             } else {
-                if (badge) { badge.textContent = 'Found it!'; badge.classList.add('active'); }
+                if (brainBadge) { brainBadge.textContent = 'Found it!'; brainBadge.classList.add('active'); }
                 handleSuccess(data.animal);
                 highlightAnimal(data.animal, 12000);
                 currentDelay = 12000;
             }
         } else {
-            if (badge) { badge.textContent = 'Looking...'; badge.classList.add('active'); }
+            if (brainBadge) { brainBadge.textContent = 'Looking...'; brainBadge.classList.add('active'); }
             currentDelay = 3000;
         }
     } catch (e) {
         console.error('Capture error:', e);
+        if (brainBadge) {
+            brainBadge.textContent = 'Trying again...';
+            brainBadge.classList.add('active');
+        }
         currentDelay = 4000;
     }
 }
@@ -276,15 +362,52 @@ function handleSuccess(animal) {
     showNameAnimation(animal);
 }
 
-function playAnimalSound(animal) {
+async function loadSoundBuffer(path) {
+    if (soundBufferCache.has(path)) {
+        return soundBufferCache.get(path);
+    }
+
+    if (!audioContext) {
+        return null;
+    }
+
+    const response = await fetch(path);
+    const arrayBuffer = await response.arrayBuffer();
+    const decodedBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0));
+    soundBufferCache.set(path, decodedBuffer);
+    return decodedBuffer;
+}
+
+async function playAnimalSound(animal) {
     const paths = animalConfig[animal];
     if (!paths || paths.length === 0) {
         console.log(`No sound for "${animal}" — showing name only`);
         return;
     }
+
     const randomPath = paths[Math.floor(Math.random() * paths.length)];
+    const unlocked = await unlockAudio();
+
+    if (unlocked && audioContext) {
+        try {
+            const buffer = await loadSoundBuffer(randomPath);
+            if (buffer) {
+                const source = audioContext.createBufferSource();
+                source.buffer = buffer;
+                source.connect(audioContext.destination);
+                source.start(0);
+                return;
+            }
+        } catch (error) {
+            console.warn('Web Audio playback failed, falling back to HTML audio:', error);
+        }
+    }
+
     const audio = new Audio(randomPath);
-    audio.play();
+    audio.playsInline = true;
+    audio.play().catch(error => {
+        console.warn('Audio playback failed:', error);
+    });
 }
 
 function showNameAnimation(animal) {
@@ -467,4 +590,3 @@ window.addEventListener('load', () => {
         if (quizActive) pickNextQuizAnimal();
     });
 });
-

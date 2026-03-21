@@ -238,11 +238,11 @@ h1, h2, h3 {
     }
 }
 
-/* Back Button */
+/* Camera Buttons */
+.camera-action,
 #backButton {
     position: absolute;
     bottom: 24px;
-    right: 24px;
     z-index: 25;
     background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(8px);
@@ -257,17 +257,34 @@ h1, h2, h3 {
     transition: background 0.2s, transform 0.1s;
 }
 
+.camera-action {
+    left: 24px;
+}
+
+#backButton {
+    right: 24px;
+}
+
+.camera-action:active,
 #backButton:active {
     transform: scale(0.95);
     background: rgba(0, 0, 0, 0.7);
 }
 
 @media (max-width: 480px) {
+    .camera-action,
     #backButton {
         bottom: 16px;
-        right: 16px;
         padding: 8px 16px;
         font-size: 14px;
+    }
+
+    .camera-action {
+        left: 16px;
+    }
+
+    #backButton {
+        right: 16px;
     }
 }
 

@@ -1,25 +1,50 @@
 import torch
 from PIL import Image
 from io import BytesIO
+from threading import Lock
+import time
 from transformers import CLIPProcessor, CLIPModel
 from utils.logger import logger
 
 
 class CLIPService:
     def __init__(self, model_name="openai/clip-vit-base-patch32"):
-        try:
-            logger.info(f"Loading CLIP model: {model_name}...")
-            self.model = CLIPModel.from_pretrained(model_name)
-            self.processor = CLIPProcessor.from_pretrained(model_name)
-            self.model.eval()
-            logger.info("CLIP model loaded successfully!")
-        except Exception as e:
-            logger.error(f"Could not load CLIP model: {e}")
-            self.model = None
-            self.processor = None
+        self.model_name = model_name
+        self.model = None
+        self.processor = None
+        self._load_lock = Lock()
+        self._next_retry_at = 0
 
     def is_ready(self):
         return self.model is not None and self.processor is not None
+
+    def _ensure_loaded(self):
+        if self.is_ready():
+            return True
+
+        if time.monotonic() < self._next_retry_at:
+            return False
+
+        with self._load_lock:
+            if self.is_ready():
+                return True
+            if time.monotonic() < self._next_retry_at:
+                return False
+
+            try:
+                logger.info(f"Loading CLIP model: {self.model_name}...")
+                self.model = CLIPModel.from_pretrained(self.model_name)
+                self.processor = CLIPProcessor.from_pretrained(self.model_name)
+                self.model.eval()
+                self._next_retry_at = 0
+                logger.info("CLIP model loaded successfully!")
+                return True
+            except Exception as e:
+                logger.error(f"Could not load CLIP model: {e}")
+                self.model = None
+                self.processor = None
+                self._next_retry_at = time.monotonic() + 30
+                return False
 
     def detect_animal(self, image_bytes_or_cv2, known_animals):
         """
@@ -29,7 +54,7 @@ class CLIPService:
         image_bytes_or_cv2: either raw bytes or a cv2 (numpy) image
         known_animals: list of animal name strings, e.g. ["cow", "dog", "lion"]
         """
-        if not self.is_ready():
+        if not self._ensure_loaded():
             return None, 0
 
         try:

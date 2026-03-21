@@ -1,5 +1,6 @@
 import time
 from fastapi import APIRouter, Request
+from services.clip_service import clip_service
 from services.gemini_service import gemini_service
 from utils.sound_loader import group_animal_sounds
 
@@ -23,6 +24,7 @@ async def health_check(request: Request):
         "success": True,
         "data": {
             "uptime_seconds": uptime_seconds,
+            "clip_ready": clip_service.is_ready(),
             "yolo_ready": False,
             "gemini_ready": gemini_service.is_ready(),
             "loaded_animals": animal_count,
