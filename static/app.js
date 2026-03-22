@@ -255,9 +255,6 @@ async function startCamera(facingMode = currentFacingMode) {
     stopCapture();
 
     try {
-        await primeAudioPlayback();
-        await unlockAudio();
-        void preloadAllSounds();
         stopWebcam();
 
         const stream = await getCameraStream(currentFacingMode);
@@ -269,6 +266,7 @@ async function startCamera(facingMode = currentFacingMode) {
                 console.warn('Video playback needs another gesture:', playError);
             }
 
+            webcamElement.classList.toggle('mirrored', currentFacingMode === 'user');
             webcamElement.classList.add('active');
             startScreen.classList.add('hidden');
             backButton.classList.remove('hidden');
@@ -282,6 +280,8 @@ async function startCamera(facingMode = currentFacingMode) {
             }
 
             await Promise.all([
+                primeAudioPlayback(),
+                unlockAudio(),
                 preloadAllSounds(),
                 warmUpInference()
             ]);
@@ -304,14 +304,14 @@ async function startCamera(facingMode = currentFacingMode) {
 
 document.getElementById('startButton').addEventListener('click', () => {
     quizMode = false;
-    greetAbigail();
     startCamera('user');
+    greetAbigail();
 });
 
 document.getElementById('quizButton').addEventListener('click', () => {
     quizMode = true;
-    greetAbigail();
     startCamera('user');
+    greetAbigail();
 });
 
 cameraSwitchButton.addEventListener('click', async () => {

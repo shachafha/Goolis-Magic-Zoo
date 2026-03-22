@@ -181,6 +181,10 @@ h1, h2, h3 {
     object-fit: cover;
 }
 
+#webcam.mirrored {
+    transform: scaleX(-1);
+}
+
 /* Camera animal frame strips */
 .cam-strip {
     position: absolute;
